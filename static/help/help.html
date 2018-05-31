@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="cache-control" content="no-cache">    
+    <title>使用手册</title>
+</head>
+<div id="content">
+<h1>量化产品管理系统-使用手册</h1>
+<p>版本号:{{VERSION}}</p>
+<h2>目录</h2>
+	<blockquote>
+	<h3><a href="#md">基础数据支持</a></h3>
+	<h3><a href="#header">页眉工具条</a></h3>
+	<h3><a href="#pm">产品管理</a></h3>
+	<blockquote>
+		<h4><a href="#market">市场监控</a></h4>
+		<h4><a href="#model">模型监控</a></h4>
+		<h4><a href="#product">产品管理</a></h4>
+	</blockquote>
+	<h3><a href="#ufx">交易管理</a></h3>
+	<h3><a href="#report">产品报告</a></h3>
+	<h3><a href="#attribution">业绩归因</a></h3>
+	<h3><a href="#strats">策略复盘</a></h3>
+	</blockquote>
+</div>
+<hr>
+<div id="md">
+<h2><a href="#content">基础数据支持</a></h2>
+
+	<blockquote>
+	<h3>Redis服务器(自建)</h3>
+	<p>用若干hashmap缓存实时行情和收益,具体如下表所示:</p>
+	<table border=1>
+	<tr><th>变量名</th><th>来源</th><th>格式<"key","value"></th></tr>
+	<tr><td>date</td><td>tradedate.txt</td><td><"today"/"yesterday,"yyyymmdd"></td></tr>
+	<tr><td>updatetime</td><td>各数据源时间戳</td><td><"数据源","yyyy-mm-dd HH:MM:SS"></td></tr>
+	<tr><td>symbolname</td><td>估值表</td><td><"证券代码",证券名称></td></tr>
+	<tr><td>CTP</td><td>CTP实时行情流</td><td><"证券代码","交易状态|最新价|昨收|昨结|持仓量|总量"></td></tr>
+	<tr><td>stock</td><td>上交所和深交所股票</td><td><"证券代码","交易状态|最新价|昨收"></td></tr>
+	<tr><td>fund</td><td>上交所基金和本平台管理持仓的基金</td><td><"证券代码","交易状态|最新价|昨收"></td></tr>
+	<tr><td>bond</td><td>本平台管理持仓的债券</td><td><"证券代码","交易状态|最新价|昨收"></td></tr>
+	<tr><td>index</td><td>上交所指数</td><td><"证券代码","交易状态|最新价|昨收"></td></tr>
+	</table>
+
+	<h3>ActiveMQ(自建)</h3>
+	<p>提供UFX交易行情流,格式:Unix时间戳@{证券代码:[最新价,总量,卖一价,...,,卖五价,卖一量,...,卖5量,买一价,...,买五价,买一量,...,买五量,昨收,昨结],...}</p>
+
+	<h3>samba共享盘(自建)</h3>
+	<p>保存估值表,成交回报,模型文件,持仓文件等静态历史数据,设为Z盘</p>
+	<h3>MySQL(自建)</h3>
+	<p>保存UFX任务json和UFX成交回报</p>
+	<h3>CTP实时行情流(自建)</h3>
+	<p>期货数据来自于自建的CTP转存服务器,通过http协议获取</p>
+	<p>将其中所有合约转存到redis的CTP这个hashmap内,并转发到ActiveMQ</p>
+
+	<h3>Wind数据库(IT维护)</h3>
+	<p>行情和交易维护依赖以下历史数据,这些数据从wind数据库导出到txt文件中,保存路径在config.json->PATH->fromWinddb定义:</p>
+	<table border=1>
+	<tr><th>文件名</th><th>数据</th><th>格式</th><th>更新时间</th></tr>
+	<tr><td>AShareIndustriesClass.txt</td><td>中信股票二级行业分类</td><td>证券代码,所属行业</td><td>1年更新1次</td></tr>
+	<tr><td>tradedate.txt</td><td>2017年7月17日到未来一年内的所有上交所交易日</td><td>日期</td><td>1年更新1次</td></tr>
+	<tr><td>AShareDividend.txt</td><td>当日红利和红股到账</td><td>证券代码,每股红股,每股红利</td><td>每天08:15</td></tr>
+	<tr><td>AShareIPO.txt</td><td>新股上市价格</td><td>证券代码,上市价格</td><td>每天08:15</td></tr>
+	<tr><td>benchmark.txt</td><td>2013年2月27日以来指数价格</td><td>日期,指数代码,指数价格</td><td>每天08:15</td></tr>
+	<tr><td>AShareDailyTrade/yyyymmdd.txt</td><td>股票昨日行情</td><td>证券代码,收盘价,开盘价,最高价,最低价,全天均价,复全因子,成交量</td><td>每天08:15</td></tr>
+	<tr><td>FutureDailyTrade/yyyymmdd.txt</td><td>期货昨日行情</td><td>证券代码,收盘价,开盘价,最高价,最低价,成交量</td><td>每天08:15</td></tr>
+	</table>
+
+	<h3>上交所实时行情(IT维护)</h3>
+	<p>上交所数据来源是txt文件</p>
+	<p>将其中的股票(60开头),指数(00开头),基金(5开头),分别转存到redis的stock,index和fund这三个hashmap内,并转发到ActiveMQ</p>
+
+	<h3>深交所实时行情(IT维护)</h3>
+	<p>上交所数据来源是DBF文件</p>
+	<p>将其中的股票(00开头和30开头)转存到redis的stock这个hashmap内,并转发到ActiveMQ</p>
+	</blockquote>
+</div>
+<hr>
+<div id="header">
+<h2><a href="#content">页眉工具条</a></h2>
+	<blockquote>
+	<img src="/static/help/header.png"></img>
+	<h3>版本号</h3>
+	<p>系统的版本号即最后一次系统更新的时间戳,单击可以查看该使用手册</p>
+	<h3>系统配置</h3>
+	<p>在此修改系统配置文件config.json,系统配置json包含如下key:</p>
+	<table border=1>
+	<tr><th>key</th><th>类型</th><th>默认值</th><th>功能</th></tr>
+	<tr><td>userIP</td><td>json</td><td>{<br>"127.0.0.1": "Server.super"<br>}</td><td>根据用户的IP地址进行权限控制,权限设置的格式为[name.job]<br>job的取值有4种<br>
+pm:除了控制交易外的所有权限<br>
+trader:只有控制交易的权限<br>
+super:所有权限<br>
+watcher:所有查看类权限</td></tr>
+	<tr><td>PATH</td><td>json</td><td>{<br>
+"GZB": "/mnt/Z/GZB/",<br>
+"HSInstructions": "/mnt/Z/HSInstructions/",<br>
+"Model": "/mnt/Z/Models/",<br>
+"Monitor": "/mnt/Z/JDSY_XML/",<br>
+"Prohibit": "/mnt/Z/prohibit/",<br>
+"Restricted": "/mnt/Z/restricted/",<br>
+"fromWinddb": "/mnt/Z/fromWinddb/",<br>
+"local": "backup/",<br>
+"log": "log/",<br>
+"report": "/mnt/Z/REPORT/",<br>
+"strats": "/mnt/Z/strats/",<br>
+"summary": "summary/"<br>}</td><td>
+GZB:估值表目录<br>
+HSInstructions:指令文件目录<br>
+Model:模型文件目录<br>
+Monitor:EOD和BOD目录<br>
+Prohibit:禁投名单目录<br>
+Restricted:限制名单目录<br>
+fromWinddb:万得数据目录<br>
+local:本地备份目录,包含所有EOD,BOD和指令文件<br>
+log:交易日志目录<br>
+report:产品报告目录<br>
+strats:默认参数复盘结果目录<br>
+summary:指令汇总信息目录
+</td></tr>
+	<tr><td>modelList</td><td>json</td><td>{<br>"000016.SH/SZ50": "000016.SH"<br>}</td><td>
+模型监控,策略复盘以及所有账户用到的策略都在这里配置,格式为<br>
+"分组/组合名":"基准指数代码"
+</td></tr>
+	<tr><td>productList</td><td>json</td><td>{<br>
+        "ZJPC": {<br>
+            "AccountCode": "80090150",<br>
+            "CJHB": "/mnt/Z/CJHB/UFX/",<br>
+            "benchmark": "0.06+1*0",<br>
+            "name": "定向-中金浦成对冲",<br>
+            "tool": "UFX",<br>
+            "type": ""<br>
+        }<br>}</td><td>以账户代号为key,该代号将作为该账户所有数据的文件夹名<br>
+AccountCode:账户编号<br>
+CJHB:该账户成交回报的存储位置<br>
+benchmark:业绩基准,产品报告和产品监控中的超额收益都将按照此基准计算<br>
+name:账户名称,须与成交回报中的名称一致<br>
+tool:交易系统,支持UFX,O32,O32ZY,O32PB,XY,IMS,JZ30<br>
+type:产品类型,有如下类型:<br>""(一般账户),"指数加"(只管理指数加固收端),"外部账户"(不核对持仓,不分篮子)
+</td></tr>
+	<tr><td>mysql</td><td>json</td><td>{<br>"db": "ufx",<br>"host": "127.0.0.1",<br>"passwd": "qwert",<br>"user": "ufx"<br>}</td><td>mysql配置,mysql保存算法交易的交易任务和成交回报</td></tr>
+	<tr><td>redis</td><td>json</td><td>{<br>"ip": "127.0.0.1",<br>"port": 6380<br>}</td><td>redis配置,所有实时数据都通过redis读写</td></tr>
+	</table>
+	<h3>市场概况</h3>
+	<p>包括中证500,沪深300,上证50的指数涨跌幅和上交所(SSE),深交所(SZSE),CTP行情的时间戳</p>
+	<h3>日期选择</h3>
+	<p>单击日历选择过往的交易日,查看当天15:00:00的各个产品和证券的收益以及UFX交易的完成情况</p>
+	<h3>重载</h3>
+	<p>单击绿色圆圈日历将回到今天日期,并重载今天的实时数据</p>
+	</blockquote>
+<hr>
+
+<div id="pm">
+<h2><a href="#content">产品管理</a></h2>
+	<blockquote>
+	<img src="/static/help/pm.png" width="800px" height="420px"></img>
+	<h3 id="market"><a href="#content">市场监控</a></h3>
+		<blockquote>
+		<h4>股指基差</h4>
+		<img src="/static/help/basis.png"  width="400px" height="325px"></img>
+		<p>实时更新IC,IF,IH股指期货的年化基差期限结构,年化基差的计算如下:(以IF1804为例)</p>
+		<p>basis_IF1804=(Price_IF1804/Price_000300-1)*Days_to_maturity</p>
+		<h4>商品期货</h4>
+		<img src="/static/help/futures.png"  width="400px" height="325px"></img>
+		<p>实时更新国内三大商品期货交易所的主要合约的当日平均涨跌幅, 平均涨跌幅计算如下:(以RB为例)</p>
+		<p>Return_RB=sum(Return_RB1801*OpenInterest_RB1801,...)/sum(OpenInterest_RB1801,...)</p>
+		<h4>中信行业</h4>
+		<img src="/static/help/sectors.png"  width="400px" height="325px"></img>
+		<p>实时更新中信二级行业的股票当日平均涨跌幅, 平均涨跌幅计算如下:(以"银行"为例)</p>
+		<p>Return_银行=average(Return_浦发银行,Return_工商银行,Return_招商银行,...)</p>
+		</blockquote>
+	<h3 id="model"><a href="#content">模型监控</a></h3>
+		<blockquote>
+		<img src="/static/help/models.png"  width="420px" height="175px"></img>
+		<p>实时更新各模型的当日超额收益,在config.json的modelList增加或删除需要监控的模型,配置格式如下:</p>
+		<p>{"分组/组合名":"基准指数代码",...}</p>
+		<p>建议将基准相同的模型分在为同一组,便于对比.各模型保存路径在config.json->PATH->Model定义,模型文件按照"日期,证券代码,权重"格式保存</p>
+		<p>绝对收益和基准收益.绝对收益的计算如下:</p>
+		<p>Return=sum(weight_symbol1*Return_symbol1,...)</p>
+		<p>
+		</blockquote>
+	<h3 id="product"><a href="#content">产品管理</a></h3>		
+		<blockquote>
+		<img src="/static/help/product.png"></img>
+		<p>每天维护账户的流程如下图所示:</p>
+		<img src="/static/help/workflow.png" width="600px" height="450px"></img>
+		<p>其中EOD代表End Of Day的持仓信息,BOD代表Begin Of Day,以xml的格式存储,该xml还存储着部分账户信息,估值表格式信息和交易记录</p>
+		<h4>核对持仓</h4>
+		<p>每天早上需要用基金估值表跟我们自己维护的昨日EOD([yyyymmdd]EOD.xml)做核对,生成昨日EOD_check([yyyymmdd]EOD_check.xml)和今天BOD([yyyymmdd]BOD.xml)</p>
+		<p>在没有全天没有交易的情况下,EOD和BOD是一样的.</p>
+		<p></p>
+		<h4>生成指令</h4>
+		<p>根据交易计划生成备选的交易指令文件,交易计划的具体格式参见下文.生成1个账户的交易指令会在服务器上产生3个文件:篮子交易指令,账户交易指令,指令汇总信息</p>
+		<p>各个账户的交易系统不同,生成的交易指令文件格式也不同,可在系统配置config.json->productList->[PRODUCT]->tool中配置</p>
+		<h4>下达指令</h4>
+		<h4>更新持仓</h4>
+		<h4>交易计划</h4>
+		<img src="/static/help/schedule.png" width="497px" height="495px"></img>
+		<p>交易计划以json格式保存,包含如下key:</p>
+		<table border=1>
+		<tr><th>key</th><th>类型</th><th>默认值</th><th>功能</th></tr>
+		<tr><td>confirmed</td><td>array</td><td>[]</td><td>交易指令时间戳的数组</td></tr>
+		<tr><td>timetrade</td><td>string</td><td>""</td><td>交易指令时间戳</td></tr>
+		<tr><td>clearExposure</td><td>int</td><td>1</td><td>是否调整股票敞口<br>1:是<br>0:否</td></tr>
+		<tr><td>progress</td><td>int</td><td>2</td><td>交易进度</br>
+1:EOD错误</br>
+2:无估值表</br>
+3:股票持仓错误</br>
+4:期货持仓错误</br>
+10:未交易</br>
+11:正在交易中</br>
+12:确认成交
+</td></tr>
+		<tr><td>rebalance</td><td>int</td><td>1</td><td>是否读取目标模型调仓<br>1:是<br>0:否</td></tr>
+		<tr><td>isDelta</td><td>int</td><td>1</td><td>是否增量调仓<br>1:增量<br>0:绝对量</td></tr>
+		<tr><td>Composite</td><td>json</td><td>{</br>"security":{},<br>"future":{},<br>"commodity":{},<br>"equity":{}<br>}</td><td>篮子指令</td></tr>
+		</table>
+
+		<h4>全部重置</h4>
+		<p>重新生成默认交易计划,交易进度重设为无估值表状态</p>
+		<h4>查看日志</h4>
+		<img src="/static/help/log.png" width="495px" height="496px"></img>
+		<p>记得早上全部核对完和更新完持仓后都要查看日志,日志中会记录账户的分红和送股明细,以及每天交易的完成情况,包括未完全成交的指令,额外指令(extra deal)和其他资产单元的指令(other deal)</p>
+		</blockquote>
+	</blockquote>
+</div>
+<hr>
+<div id="ufx">
+<h2><a href="#content">交易管理</a></h2>
+</div>
+<hr>
+<div id="report">
+<h2><a href="#content">产品报告</a></h2>
+</div>
+<hr>
+<div id="attribution">
+<h2><a href="#content">业绩归因</a></h2>
+</div>
+<hr>
+<div id="strats">
+<h2><a href="#content">策略复盘</a></h2>
+</div>
+
+</html>

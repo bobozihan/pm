@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="cache-control" content="no-cache">    
+    <link rel="stylesheet" type="text/css" href="/static/lib/easyui/themes/black/easyui.css">
+    <link rel="stylesheet" type="text/css" href="/static/lib/easyui/themes/icon.css">
+    <title>量化产品管理系统</title>
+</head>
+<body  class="easyui-layout" data-options="fit:true" style="background-color: black;">
+
+<div id="tab-tools">
+    <a class="easyui-linkbutton" data-options="plain:true" id="version" onclick="window.open('/help')"></a>
+    <a class="easyui-linkbutton" data-options="iconCls:'icon-more'"  onclick="getConfig()"></a>
+    <a class="easyui-linkbutton" data-options="plain:true">中证500</a>
+    <a class="easyui-linkbutton" data-options="plain:true" id="zz500" ></a>            
+    <a class="easyui-linkbutton" data-options="plain:true">沪深300</a>
+    <a class="easyui-linkbutton" data-options="plain:true" id="hs300" ></a>            
+    <a class="easyui-linkbutton" data-options="plain:true">上证50</a>
+    <a class="easyui-linkbutton" data-options="plain:true" id="sz50" ></a>
+    
+
+    <a style="color: white">SSE</a>
+    <a style="background-color: black;color: white" id="SSE"></a>        
+    <a style="color: white">SZSE</a>
+    <a style="background-color: black;color: white" id="SZSE"></a>
+    <a style="color: white">CTP</a>
+    <a style="background-color: black;color: white" id="CTP"></a>
+    <a style="color: white">日期</a>
+    <a style="background-color: black;color: white" id="date"></a>
+    <a class="easyui-datebox" style="width:18px" id="today"></a> 
+    <a class="easyui-linkbutton"  data-options="iconCls:'icon-reload',plain:true"  onclick="restart('')" ></a>
+    
+</div>
+
+<div id="tabs" class="easyui-tabs" data-options="tools:'#tab-tools',onSelect:Module"  style="width: 100%;height:100%">
+    <div title="产品管理" class="easyui-layout" data-options="fit:true">        
+        <div data-options="region:'west',split:true"  style="width:25%;height:100%;">
+            <div class="easyui-layout" data-options="fit:true">
+                <div data-options="region:'north',split:true" style="width: 100%;height:40%;">
+                    <div class="easyui-tabs" data-options="fit:true">
+                        <div title="股指基差">
+                            <div id="chart0"></div>
+                        </div>
+                        <div title="商品期货">
+                            <div id="chart1"></div>
+                        </div>
+                        <div title="中信行业">
+                            <div id="chart2"></div>
+                        </div>                    
+                    </div>
+                </div>
+                <div data-options="region:'center',split:true" style="width: 100%;height:60%;">
+                    <table id="model" class="easyui-treegrid" data-options="
+                                    fit:true,
+                                    idField: 'id',
+                                    treeField: 'id',
+                                    sortName:'id',  
+                                    sortOrder:'asc',
+                                    remoteSort: false,
+                                    title:'策略模型',
+                                    onExpand:onExpand,
+                                    onCollapse:onCollapse,
+                                    onDblClickCell: checkModel">
+                        <thead>
+                            <tr>
+                                <th data-options="field:'id'" width="40%" sortable="true"  >策略代号</th>
+                                <th data-options="field:'A',formatter:formatProfit, align:'right'" width="20%" sortable="true" >超额收益</th>
+                                <th data-options="field:'R',formatter:formatProfit, align:'right'" width="20%" sortable="true" >绝对收益</th>
+                                <th data-options="field:'Rm',formatter:formatProfit, align:'right'" width="20%" sortable="true" >基准收益</th>
+                            </tr>
+                        </thead>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+        <div data-options="region:'center'"  style="width:75%;height:100%;">
+            <div id="monitor-toolbar" style="height:auto" class="datagrid-toolbar">
+                
+                <a class="easyui-linkbutton" onclick="selectAll()">全选</a>                
+                <a class="easyui-linkbutton" onclick="action('v')">核对持仓</a>
+                <a class="easyui-linkbutton" onclick="action('i')">生成指令</a>
+                <a class="easyui-linkbutton" onclick="action('c')">下达指令</a>
+                <a class="easyui-linkbutton" onclick="action('u')">更新持仓</a>
+                <a class="easyui-linkbutton" onclick="saveSchedule('all')" >交易计划</a> 
+                <a class="easyui-linkbutton" onclick="resetAll()">全部重置</a>
+                <a class="easyui-linkbutton" onclick="checklog()" >查看日志</a>
+            </div>
+            <!-- <div style="width: 100%;height:100%;"> -->
+                <table id="monitor" class="easyui-treegrid" data-options="
+                                fit:true,
+                                idField: 'id',
+                                treeField: 'N',
+                                sortName:'N',                      
+                                showFooter: true,                    
+                                sortOrder:'asc',  
+                                remoteSort: false,
+                                checkbox: function(row){return row.hasOwnProperty('children')},
+                                toolbar:'#monitor-toolbar',
+                                onDblClickCell: checkPosition,
+                                onExpand:onExpand,
+                                onCollapse:onCollapse,
+                                onContextMenu:onContextMenu                                
+                                ">
+                    <thead>
+                        <tr>         
+                            <th data-options="field:'N',sortable:'true'" width="220px" >产品名称</th>
+                            <th data-options="field:'A',formatter:formatProfit,sortable:'true', align:'right'" width="75px">超额收益</th>
+                            <th data-options="field:'R',formatter:formatProfit,sortable:'true', align:'right'" width="75px">绝对收益</th>
+                            <th data-options="field:'Nav',formatter:formatP,sortable:'true', align:'right'" width="75px">净值</th>
+                            <th data-options="field:'T',formatter:formatPrice,sortable:'true', align:'right'" width="130px" >市值(￥)</th>
+                            <th data-options="field:'type',formatter:formatType,align:'right'" width="9%" >交易进度</th>                                       
+                            <th data-options="field:'prohibit',align:'right'" width="3%">禁投</th>
+                            <th data-options="field:'num',     align:'right'" width="3.5%" >指令数</th>
+                            <th data-options="field:'sellamt', align:'right', formatter:formatPrice"  width="9.5%">卖出金额(￥)</th>
+                            <th data-options="field:'buyamt',  align:'right', formatter:formatPrice" width="9.5%" >买入金额(￥)</th>
+                            <th data-options="field:'cash',    align:'right', formatter:formatPrice" width="9.5%" >净卖出金额(￥)</th>
+                            <th data-options="field:'cashratio',align:'right',formatter:formatPercentage" width="6.5%">净卖出比例</th>
+                            <th data-options="field:'turn',     align:'right',formatter:formatPercentage" width="6.5%" >换手率</th>
+                            
+                        </tr>
+                    </thead>
+                </table>
+            <!-- </div> -->
+        </div>        
+    </div>
+    <div title="交易管理" class="easyui-layout" data-options="fit:true">
+
+        <div data-options="region:'west',split:true"  style="width:20%;height:100%;">
+            <div id="instru-toolbar-toolbar" style="height:auto" class="datagrid-toolbar">
+                <a class="easyui-linkbutton"  data-options="iconCls:'icon-reload'" onclick="getInstru()" >刷新指令</a>
+                
+            </div>
+            <input id="ufx_instru" title="指令文件" class="easyui-datalist" style="width: 98%" data-options="
+                    toolbar:'#instru-toolbar',
+                    singleSelect:false,
+                    checkbox: true">            
+            <div style="width: 98%; padding-top: 10px">
+                <input id="ufx_xml" class="easyui-combobox" style="" data-options="
+                            data:[{value:'twap',text:'twap'},
+                                  {value:'rebalance',text:'rebalance'},
+                                  {value:'sell',text:'sell'}],
+                                label:'参数配置',
+                                labelPosition:'left',
+                                required:true                    
+                                ">
+                <a class="easyui-linkbutton"  onclick="getUFXPar()" >修改参数</a>
+            </div>
+            <div style="width: 98%; padding-top: 10px">
+                
+                <input id="taskid" class="easyui-numberspinner" style="" data-options="
+                                min:1,
+                                max:99,
+                                increment:1,
+                                label:'任务编号',
+                                labelPosition:'left',                    
+                                required:true
+                                ">
+                    <a class="easyui-linkbutton"  onclick="java()" >确认下单</a>
+            </div>
+        </div>
+        <div data-options="region:'center'"  style="width:80%;height:100%;">
+            <div id="tg-toolbar" style="height:auto" class="datagrid-toolbar">
+                <a id="begin" class="easyui-linkbutton"   onclick="control(1)" >开始</a>
+                <a id="pause" class="easyui-linkbutton"   onclick="control(2)" >暂停</a>
+                <a id="cancel" class="easyui-linkbutton"  onclick="control(4)" >撤单</a>
+            </div>
+            <table id="tg" class="easyui-treegrid" data-options="
+                                fit:true,
+                                idField: 'id',
+                                treeField: 'name',                
+                                sortName: 'name',
+                                sortOrder: 'desc',
+                                remoteSort: false,
+                                toolbar:'#tg-toolbar',                
+                                onDblClickRow: batch_detail,
+                                onClickRow:    getStatus,
+                                onExpand:onExpand,
+                                onCollapse:onCollapse
+                    
+                ">
+            <thead>
+                <tr>
+                    <th data-options="field:'status',align:'right',formatter:formatUFX"   width="6%" sortable="true">状态</th>
+                    <th data-options="field:'name'" width="30%" sortable="true">任务名</th>                
+                    <th data-options="field:'instru_number',align:'right'"  width="5%" sortable="true">指令数</th>                
+                    <th data-options="field:'target',align:'right',formatter:formatPrice"  width="8%" sortable="true">目标金额(￥)</th>
+                    <th data-options="field:'deal', align:'right',formatter:formatPrice"  width="8%" sortable="true">完成金额(￥)</th>
+                    <th data-options="field:'profit',align:'right',formatter:formatPrice"  width="6%" sortable="true">交易盈亏(￥)</th>
+                    <th data-options="field:'fee',align:'right',formatter:formatPrice"  width="6%" sortable="true">佣金(￥)</th>
+                    <th data-options="field:'fee_p',align:'right',formatter:formatPercentage"  width="6%" sortable="true">佣金(%)</th>
+                    <th data-options="field:'impact_p',align:'right',formatter:formatPercentage"  width="6%" sortable="true">冲击(%)</th>
+                    <th data-options="field:'progress',align:'right',formatter:formatProgress"  width="12%" sortable="true">完成进度</th>
+                    <th data-options="field:'deal_time',align:'right',formatter:formatTime" width="8%" sortable="true" >成交时间</th>
+                </tr>
+            </thead>
+            </table>
+        </div>
+    </div>
+    <div title="产品报告" class="easyui-layout" data-options="fit:true">
+        <div id="tb" style="height:auto" class="datagrid-toolbar">
+            <a>请选择报告日</a>
+            <input id="reportdate" class="easyui-datebox" style="width:5%"> 
+            <input class="easyui-switchbutton" id ="switch">
+        </div>
+
+        <table id="report" class="easyui-treegrid" data-options="
+                        fit:true,
+                        idField: 'id',  
+                        treeField: 'id',  
+                        sortName:'name',    
+                        sortOrder:'asc',                              
+                        remoteSort: false,
+                        toolbar:'#tb',
+                        onDblClickRow: openProduct
+            ">            
+        </table>
+    </div>
+    <div title="业绩归因" class="easyui-layout" data-options="fit:true">
+        <div data-options="region:'west',split:true"  style="width:20%;height:100%;">
+            <div style="width: 90%;padding-top: 10px">
+            <input id="product_attr" class="easyui-combobox" style="width: 100%;" data-options="
+                            label:'选择产品',
+                            labelPosition:'top',
+                            required:true                    
+                            ">
+            </div>
+            <div style="width: 90%;padding-top: 10px">
+            <input id="startdate" class="easyui-datebox" style="width: 100%;"  data-options="
+                            label:'起始日',
+                            labelPosition:'top',
+                            required:true                    
+                            ">
+            </div>
+            <div style="width: 90%;padding-top: 10px">
+            <input id="enddate" class="easyui-datebox" style="width: 100%;" data-options="
+                            label:'终止日',
+                            labelPosition:'top',
+                            required:true                    
+                            ">
+            </div>
+            <div style="width: 90%;padding-top: 10px">
+            <input id="stock_attr" class="easyui-combobox" style="width: 100%;" data-options="
+                            data:[{value:0,text:'合并所有股票'},
+				{value:1,text:'按中信行业分类'},
+				{value:2,text:'不分类'}],
+                            label:'股票分类',
+                            labelPosition:'top',
+                            required:true                    
+                            ">            
+            </div>
+            <div style="width: 90%;height:20%;padding-top: 10px">
+            <input id="aggr_attr" class="easyui-textbox" style="width: 100%;height:100%"  data-options="
+                            multiline:true,
+                            label:'持仓分类',
+                            labelPosition:'top',
+                            required:true
+                            ">            
+            
+            </div>
+            <div style="width: 90%;height:20%;padding-top: 10px">
+            <input id="productMap" class="easyui-textbox" style="width: 100%;height:100%"  data-options="    
+                            multiline:true,
+                            label:'穿透产品',
+                            labelPosition:'top',
+                            required:true
+                            ">
+            </div>
+            <div style="text-align:center;padding-top: 10px">
+                <a class="easyui-linkbutton"  onclick="attribution(0)" >业绩归因</a>
+                <a class="easyui-linkbutton"  onclick="attribution(1)" >穿透持仓</a>
+            </div>
+        </div>
+        <div data-options="region:'center'"  style="width:80%;height:100%;">
+            <table id="detail_attr" class="easyui-treegrid" ></table>
+        </div>      
+
+    </div>
+    <div title="策略复盘" class="easyui-layout" data-options="fit:true">
+         <div data-options="region:'west',split:true"  style="width:20%;height:100%;">
+            <div style="width: 90%;padding-top: 10px">
+            <input id="start" class="easyui-datebox" style="width:100%" data-options="
+                            label:'建仓日',
+                            labelPosition:'top',
+                            required:true
+                            ">
+            </div>
+            <div style="width: 90%;padding-top: 10px">
+            <input id="end"   class="easyui-datebox" style="width:100%"  data-options="
+                            label:'结束日',
+                            labelPosition:'top',
+                            required:true
+                            ">
+            </div>
+            <div style="width: 90%;padding-top: 10px">
+            <input id="index" class="easyui-combobox" style="width:100%" data-options="
+                            data:[
+                                {value:'0',text:'0'},
+                                {value:'000016',text:'000016'},
+                                {value:'000300',text:'000300'},
+                                {value:'000905',text:'000905'},
+                                {value:'H00300',text:'H00300'},
+                                {value:'H00905',text:'H00905'},
+                                {value:'000906',text:'000906'}
+                            ],
+                            editable:false,
+                            label:'基准指数',
+                            labelPosition:'top',
+                            required:true                    
+                            ">
+            </div>            
+            <div style="width: 90%;padding-top: 10px">
+            <input id="trade" class="easyui-combobox" style="width:100%" data-options="
+                            data:[
+                                {value:'o',text:'开盘价'},
+                                {value:'c',text:'收盘价'},
+                                {value:'a',text:'全天均价'}
+                            ],
+                            editable:false,
+                            label:'交易价格',
+                            labelPosition:'top',
+                            required:true
+                            ">
+            </div>            
+            <div style="width: 90%;padding-top: 10px">            
+            <input id="fee" class="easyui-numberspinner" style="width:100%" data-options="
+                            min:0,
+                            max:50,
+                            increment:5,
+                            suffix:'%%',
+                            label:'交易费用',
+                            labelPosition:'top',
+                            required:true
+                            ">            
+            </div>            
+            <div style="width: 90%;padding-top: 10px">            
+            <input id="freq" class="easyui-numberspinner" style="width:100%" data-options="
+                            min:1,
+                            increment:1,
+                            suffix:'个交易日', 
+                            label:'调仓周期',
+                            labelPosition:'top',                   
+                            required:true
+                            ">
+            </div>            
+            <div style="width: 90%;padding-top: 10px">          
+
+            <a id="go" class="easyui-linkbutton" data-options="iconCls:'icon-reload'" >复盘</a>
+            <a>双击策略查看默认参数有史以来表现</a>
+            </div>            
+            
+            
+        </div>
+        <div data-options="region:'center'"  style="width:80%;height:100%;">
+            <table id="strats" class="easyui-treegrid" ></table>
+        </div>
+    </div>
+</div>
+
+<div id="charts" class="easyui-dialog"  style="width:70%;height:600px;padding:10px" ></div>
+
+<div id="dlg" class="easyui-dialog"  style="width:500px;height:500px;padding:0px" >
+    <input id="content" class="easyui-textbox"  data-options="multiline:true" style="width:100%;height:100%">   
+</div>
+
+<div id="detail" class="easyui-dialog"  style="width:60%;height:60%;padding:0px" >
+    <table id="details" class="easyui-datagrid"></table>
+</div>
+
+<div id="mm" class="easyui-menu" style="width:120px;">
+    <div>查看持仓</div>
+    <div>交易计划</div>
+    <div>模型配比</div>
+</div>
+</body>
+
+<script type="text/javascript" src="/static/lib/jquery.min.js"></script>
+<script type="text/javascript" src="/static/lib/easyui/jquery.easyui.min.js"></script>    
+<script type="text/javascript" src="/static/lib/highcharts.js"></script>
+<script type="text/javascript" src="/static/lib/highcharts-more.js"></script>
+<script type="text/javascript" src="/static/lib/dark-unica.js"></script>    
+<script type="text/javascript" src="/static/lib/md5.js"></script>
+<script type="text/javascript">
+
+var version;
+var tab="";
+var md5_task="";
+var md5_product="";
+var expandProduct={};
+var Product={};
+var loaded_report=false,loaded_pm=false,loaded_ufx=false,loaded_strats=false,loaded_attr=false;
+
+$.fn.datebox.defaults.formatter = function(date){
+    var y = date.getFullYear();
+    var m = date.getMonth()+1;
+    var d = date.getDate();
+    return y+(m<10?"0":"")+m+(d<10?"0":"")+d;
+}
+
+function datestr(date)
+{
+    var y = date.getFullYear();
+    var m = date.getMonth()+1;
+    var d = date.getDate();
+    return m+"/"+d+"/"+y;
+}
+
+function formatP(value)
+{
+    if(value==null)
+        return "";
+    if(value=="0")value="0.00"
+    x=value.split(".");
+    return x[1].length==2?(value+"%"):value;
+}
+function formatTime(value)
+{
+var ts=parseInt(value+1000000).toFixed(0);
+return ts.substr(1,2)+":"+ ts.substr(3,2)+":"+ ts.substr(5,2);
+}
+function formatProfit(value){
+    if(value==null)
+      return "";
+
+    value=value< -100?-100:value;
+    var style= '';
+    if(value< -0.00005){
+      style= 'style="color:#00ff00"';
+    }else if(value> 0.00005){
+      style= 'style="color:#ff0000"';
+    }
+
+    nStr = parseFloat(value).toFixed(2);
+    x = nStr.split('.');
+    x1 = x[0];
+    x2 = x.length > 1 ? '.' + x[1] : '.00';
+    return '<div '+style+'">' + x1+x2 + '%</div>';
+}
+
+function formatPercentage(value){
+    if(value==null)
+      return "";
+    value=value< -100?-100:value;
+
+    nStr = parseFloat(value).toFixed(2);
+    x = nStr.split('.');
+    x1 = x[0];
+    x2 = x.length > 1 ? '.' + x[1] : '.00';
+    return x1+x2 + '%';
+}
+
+function formatProgress(value){
+  var background='#cc0000';
+    if(value==null){
+      value=0;
+    }else if(value>=100){
+      background='#00cc00';
+    }
+    return '<div style="width:100%;border:1px solid '+background+'">'+
+        '<div style="width:' + value + '%;background:'+background+';color:#FFFFFF">' + formatPercentage(value) + '</div></div>';
+}
+
+
+function formatPrice(value){
+  if(value==null)
+    return null
+   nStr = parseFloat(value).toFixed(2);
+   x = nStr.split('.');
+   x1 = x[0];
+   x2 = x.length > 1 ? '.' + x[1] : '.00';
+   var rgx = /(\d+)(\d{3})/;
+   while (rgx.test(x1)) {
+    x1 = x1.replace(rgx, '$1' + ',' + '$2');
+   }
+   return x1 + x2;
+}
+function formatNav(value){
+  if(value==null)
+    return null
+   nStr = parseFloat(value).toFixed(4);
+   x = nStr.split('.');
+   x1 = x[0];
+   x2 = x.length > 1 ? '.' + x[1] : '.0000';
+   var rgx = /(\d+)(\d{3})/;
+   while (rgx.test(x1)) {
+    x1 = x1.replace(rgx, '$1' + ',' + '$2');
+   }
+   return x1 + x2;
+}
+
+function formatAmount(value){
+    value+='';
+  var rgx = /(\d+)(\d{3})/;
+  while (rgx.test(value)) {
+    value = value.replace(rgx, '$1' + ',' + '$2');
+  }
+  return value;
+}
+
+var StatusFormatter={"0":"交易","1":"涨停","-1":"跌停","2":"停牌","3":"未上市","4":"日内","5":"隔夜"};
+var UFXFormatter={0:"未开始",1:"正在执行",2:"暂停",3:"已完成",4:"已撤销"};
+var TypeFormatter={10:"未交易",11:"正在交易中",12:"确认成交",1:"EOD错误",2:"无估值表",3:"股票持仓错误",4:"期货持仓错误"};
+
+function formatStatus(value)
+{    
+    return StatusFormatter[value.toString()];
+}
+
+function formatUFX(value)
+{    
+    return UFXFormatter[value];
+}
+
+function formatType(value)
+{  
+  if(String(value).indexOf("|")<0)
+    return formatPrice(value);
+  var sp=value.split("|");  
+  var t=sp[1].substring(8);
+  
+  if(sp[0]<10)
+    return TypeFormatter[sp[0]];
+  else
+    return t+" "+TypeFormatter[sp[0]];  
+}
+
+$('#start').datebox({
+    onSelect: function(date){
+        $("#start").datebox("setValue",datestr(date));
+    }
+});
+
+$('#end').datebox({
+    onSelect: function(date){
+        $("#end").datebox("setValue",datestr(date));
+    }
+});
+
+function Module(title)
+{
+    tab=title;
+    if(tab=="产品管理" && !loaded_pm)
+    {
+        refreshProduct();        
+        loaded_pm=true;        
+          
+    }    
+    if(tab=="交易管理" && !loaded_ufx)
+    {
+        $.get("data",{p:20},function(res,status){
+            var data=$.parseJSON(res);
+            $('#tg').treegrid('loadData',data.tasks);
+            //refreshUFX(data.tasks);
+        });
+        getInstru();
+        loaded_ufx=true;
+
+    }
+    if(tab=="产品报告" && !loaded_report)
+    {
+        getReport($("#reportdate").datebox("getValue"));
+        loaded_report=true;
+        
+    }    
+    if(tab=="策略复盘" && !loaded_strats)
+    {
+        $.get("job?cmd=getStrats",function(data,status){
+            $('#strats').treegrid({
+                fit:true,
+                idField: 'id',  
+                treeField: 'N',  
+                sortName:'N',    
+                sortOrder:'asc',                              
+                remoteSort: false,
+                singleSelect:false,
+                checkbox:true,
+                toolbar:'#strats-toolbar',
+                onDblClickCell: history,
+                columns:[[                
+                {field:'N',title:'策略名称',width:'16%',sortable:true},
+                {field:'week',title:'本周超额收益',formatter:formatProfit,align:'right',width:'8%',sortable:true},
+                {field:'A',title:'累计超额收益',formatter:formatProfit,align:'right',width:'8%',sortable:true},
+                {field:'R',title:'累计收益',formatter:formatProfit,align:'right',width:'8%',sortable:true},
+                {field:'Rm',title:'基准收益',formatter:formatProfit,align:'right',width:'8%',sortable:true},
+                {field:'b',title:'基准指数',align:'right',width:'8%',sortable:true},
+                {field:'days',title:'运行天数',align:'right',width:'8%',sortable:true},
+                {field:'startdate',title:'上线日期',align:'right',width:'8%',sortable:true}
+                ]],
+                data:$.parseJSON(data)
+            });
+        });
+                        
+        loaded_strats=true;
+    }
+    if(tab=="业绩归因" && !loaded_attr)
+    {
+        $.get("job?cmd=listProduct",function(data,status){
+            $('#product_attr').combobox('loadData',$.parseJSON(data));            
+        });
+        loaded_attr=true;
+    }
+
+}
+function getInstru()
+{
+    $.get("job?cmd=listInstru",function(data,status){
+            $('#ufx_instru').datalist('loadData',$.parseJSON(data));            
+    });
+}
+function history(index,field)
+{   
+    $.get("job",{cmd:"getModel", p:field["N"]}, function (data) {
+            openCharts(data,field["b"].substring(0,6));
+        });
+}
+
+
+var onClose=function()
+{
+    $("#details").datagrid("clearSelections");
+    $("#details").datagrid({data:[], columns:[[]] });
+}
+
+
+var resetAll=function()
+{
+    $.messager.confirm('Confirm','确认重置所有产品?',function(r){
+        if (r)
+        {
+            $.get("job",{cmd:"s",p:"all"},function(data,status){
+                refreshProduct();
+            }); 
+        }
+    });
+}
+
+var selectAll=function()
+{
+    var c=$("#monitor").treegrid("getRoots");
+    for(var i of c)
+    {
+        $("#monitor").treegrid(i.checkState=="checked"?"uncheckNode":"checkNode",i.id);
+    }
+
+}
+
+var action=function(cmd){
+    var c=$("#monitor").treegrid("getCheckedNodes");
+    if(c.length==0)
+        return;
+    var p=[];
+    for(var i of c)
+    {
+        $("#monitor").treegrid("uncheckNode",i.id);
+        p.push(i.id);
+    }
+
+    
+    $.get("job",{cmd:cmd, p:p.toString()},function(data,status){
+                    $.messager.alert("",data.replace(/\n/g,"</br>"));
+                    refreshProduct();                        
+                });     
+  
+}
+
+
+function checklog()
+{
+    $.get("job?cmd=checklog",function(data,status){
+        $("#dlg").dialog({
+            title:"交易日志",
+            buttons:[]
+        });
+        $("#dlg").dialog('open');
+        $("#content").textbox("setText",data);
+
+    });
+}
+
+function getConfig()
+{
+    $.get("job?cmd=getConfig",function(data,status){
+        $("#dlg").dialog({
+            title:"系统配置",
+            buttons: [{
+                text:'保存',
+                iconCls:'icon-ok',
+                handler:function(){
+                    var content=$("#content").textbox("getText");    
+                    $.post("job",{config:content},function(data,status){
+                        
+                    });                       
+                    $('#dlg').dialog('close');
+                }
+            },{
+                text:'取消',
+                iconCls:'icon-cancel',
+                handler:function(){
+                   $('#dlg').dialog('close');
+                }
+            }]
+        });
+        $("#dlg").dialog('open');
+        $("#content").textbox("setText",data);
+
+    });
+}
+
+function getUFXPar()
+{
+    var p=$("#ufx_xml").combobox("getValue");
+    $.get("job",{cmd:"getUFXPar",p:p},function(data,status){
+        $("#dlg").dialog({
+            title:"UFX配置",
+            buttons: [{
+                text:'保存',
+                iconCls:'icon-ok',
+                handler:function(){
+                    var content=$("#content").textbox("getText");    
+                    $.post("job",{xml:content},function(data,status){
+                        
+                    });                       
+                    $('#dlg').dialog('close');
+                }
+            },{
+                text:'取消',
+                iconCls:'icon-cancel',
+                handler:function(){
+                   $('#dlg').dialog('close');
+                }
+            }]
+        });
+        $("#dlg").dialog('open');
+        $("#content").textbox("setText",data);
+
+    });
+}
+
+function java()
+{
+    var c=$("#ufx_xml").combobox("getValue");
+    var t=$("#taskid").numberspinner("getValue");
+    var f="";
+    for(var i of $("#ufx_instru").datalist("getSelections"))
+    {
+        var p=i.value.substr(0,i.value.indexOf("-"));
+        f+=" /mnt/indexenhance_new/HSInstructions/"+p+"/"+i.value;
+    }
+    $.messager.alert('ufx_trade'," java -jar zenith-trade-execution-1.3.8.jar -c multi_account_"+c+".xml -t "+t+" -i"+f);
+}
+
+$("#go").click(function(){
+    var selections=$("#strats").treegrid("getCheckedNodes");
+    if(selections.length==0)
+        return;
+    var models=[];
+    for(var t of selections)
+        if(!t.hasOwnProperty("children"))
+            models.push(t["N"]);
+    var index=$("#index").datebox("getValue");
+    var start=$("#start").datebox("getValue");
+    var trade=$("#trade").combobox("getValue");
+    var fee=$("#fee").numberspinner("getValue")/10000;
+    var freq=$("#freq").numberspinner("getValue");
+    $.messager.progress({
+                title:'正在全速复盘',
+                msg:''
+            });
+    $.get("job",{
+            cmd:"reherse", 
+            models:models.toString(),
+            start: start,
+            end: $("#end").datebox("getValue"),
+            index: index,
+            trade: trade,
+            fee:fee,
+            freq:freq
+        },
+        function (data) {
+            $.messager.progress('close');
+            openCharts(data,index);
+
+        });
+
+});
+
+function saveSchedule(p)
+{
+    $.get("job",{cmd:"getSchedule",p:p},function(data,status){
+        $("#dlg").dialog({
+            title:"交易计划 - "+p,
+            buttons: [{
+                text:'保存',
+                iconCls:'icon-ok',                    
+                handler:function(){
+                    var content=$("#content").textbox("getText");
+                    if(p==0)
+                        return; 
+                    $.post("job",{p:p,schedule:content},function(data,status){
+                        refreshProduct();          
+                    });   
+                    $('#dlg').dialog('close');
+                }
+            },{
+                text:'取消',
+                iconCls:'icon-cancel',
+                handler:function(){
+                   $('#dlg').dialog('close');
+                }
+            }]
+        });
+        $("#dlg").dialog('open');
+        $("#content").textbox("setText",data);
+    });   
+}
+
+function checkPosition(index, field){
+    
+        $.messager.progress({
+            title:'正在获取数据',
+            msg:''
+        });
+    
+        $.get("job",{cmd:"d",p:field["id"]},function(data,status){
+            $.messager.progress('close');    
+            var details=$.parseJSON(data);
+            $("#detail").dialog({
+                title:"持仓明细 "+field["id"]+" ("+details.length+")",
+                buttons:[],
+                onClose:onClose
+            });
+            $("#detail").dialog('open');
+            $("#details").datagrid({
+                fit:true,
+                rownumbers:true,
+                idField: 'id', 
+                remoteSort:false,         
+                sortName:"ret",
+                singleSelect:0,
+                data:details,
+                columns:[[
+                    {field:'ticker',title:'证券代码',width:"10%",sortable:"true"},
+                    {field:'name',title:'证券名称',width:"12%",sortable:"true"},
+                    {field:'price',title:'价格',width:"10%",sortable:"true", formatter:formatNav, align:'right'},
+                    {field:'shares',title:'数量',width:"10%",sortable:"true", align:'right'},
+                    {field:'value',title:'市值',width:"14%",sortable:"true", formatter:formatPrice,align:'right'},
+                    {field:'weight',title:'权重',width:"8%",sortable:"true",formatter:formatPercentage, align:'right'},
+                    {field:'c',title:'当日盈亏',width:"12%",sortable:"true",formatter:formatPrice, align:'right'},
+                    {field:'return',title:'日收益率',width:"10%",sortable:"true",formatter:formatProfit, align:'right'},
+                    {field:'ret',title:'组合贡献',width:"8%",sortable:"true",formatter:formatProfit, align:'right'},
+                    {field:'status',title:'状态',width:"6%",sortable:"true",formatter:formatStatus,align:'right'}
+                ]]
+            });
+
+        });   
+    
+}
+
+function openCharts(data,index)
+{
+    var dataset=$.parseJSON(data);
+    
+    var series=[{type:'area',name:index,data:dataset.index}];
+    for(var i in dataset.nav)
+    {
+        series.push({type:'line',name:i,data:dataset.nav[i]});
+    }
+    if(index!="0")
+    {
+        for(var i in dataset.nav)
+        {
+            var alpha=[];
+            for(var j in dataset.index)
+            {
+                alpha.push(dataset.nav[i][j]-dataset.index[j]);
+            }
+            series.push({type:'line',name:"Alpha_"+i,data:alpha});
+        }
+    }
+    
+    
+    
+    $("#charts").dialog({title:"股票策略复盘"});
+    $("#charts").dialog('open');
+    $('#charts').html("");       
+    
+
+    $('<div class="chart" style="height:100%">').appendTo('#charts')
+    .highcharts({
+        chart: {
+            zoomType: 'x',
+        },
+        title: {
+            text: "",                    
+        },
+        credits: {
+            enabled: false
+        },
+        legend: {
+            enabled: true
+        },
+        xAxis: {
+             title: { text: '交易日' },
+             labels:{ formatter:function(){return dataset.date[this.value];}}
+
+        },
+        yAxis: [{
+            title: {
+                text: "累计对数收益率"
+            }
+        }],        
+        plotOptions: {
+            area: {
+                fillColor: {
+                    linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1},
+                    stops: [
+                        [0, "#2b908f"],
+                        [1, Highcharts.Color("#2b908f").setOpacity(0).get('rgba')]
+                    ]
+                },     
+                threshold: null,
+                marker:{enabled: false}              
+            },
+            line: {
+                marker: {
+                    enabled: false
+                },
+                lineWidth: 2
+                
+            }
+        },
+        tooltip:{
+            formatter: function () {                             
+                var s = dataset.date[this.x]+"<br/>";
+                    
+                $.each(this.points, function () {
+                    s+= "<span style=\"color:"+this.series.color+"\">\u25CF</span> "+this.series.name+": <b>"+(this.y*100).toFixed(2)+"%</b><br/>";
+                    
+                });
+                return s;
+            },
+            shared: true,
+            crosshairs: true
+        },
+           
+        series: series
+
+    });
+        
+}
+
+function getControl(status,isTrader)
+{
+    if(status==0)//initial
+    {
+            $('#begin').linkbutton(isTrader?'enable':"disable");
+            $('#pause').linkbutton('disable');
+            $('#cancel').linkbutton('disable');
+    }
+    if(status==1)//start
+    {
+        $('#begin').linkbutton('disable');
+        $('#pause').linkbutton(isTrader?'enable':"disable");
+        $('#cancel').linkbutton('enable');
+    }
+    if(status==2)//pause
+    {
+        
+        $('#begin').linkbutton(isTrader?'enable':"disable");
+        $('#pause').linkbutton('disable');
+        $('#cancel').linkbutton('enable');
+    }
+    if(status==3 || status==4)//finish
+    {
+            $('#begin').linkbutton('disable');
+            $('#pause').linkbutton('disable');
+            $('#cancel').linkbutton('disable');
+    }
+
+}
+
+function control(Status)
+{   
+    var controlRow=$("#tg").datagrid('getSelected');
+
+    var confirmation=(Status==1?"开始":(Status==3?"撤销":"暂停"));
+
+    if(controlRow["_parentId"]==null)
+    {
+
+        $.messager.confirm('Confirm','确认'+confirmation+controlRow["id"]+'?',function(r){
+            if(r)
+            {
+                $.get("job",{cmd:"control",id:controlRow["id"],status:Status},function(data,status){
+                    getControl(Status,data);
+                });
+            }
+        });
+    }
+}
+
+function get_batch_no(row){
+
+    if(row['children'].length){
+        var batch_no=[];
+      for(var i=0;i<row['children'].length;i++){
+          batch_no=batch_no.concat(get_batch_no(row['children'][i]));
+      }
+        return batch_no;
+    }else{
+        return [row['id']];
+    }
+}
+function batch_detail(row)
+{   
+
+    var batch_no=get_batch_no(row).toString();
+    
+    $.messager.progress({
+        title:'正在获取数据',
+        msg:''
+    });
+    $.get("job?cmd=ufx&p="+batch_no,function(data,status){          
+        
+        $("#details").datagrid({
+            fit:true,
+            rownumbers:true,
+            idField: 'id',
+            remoteSort:false,      
+            sortName:"progress",
+            singleSelect:0,
+            data:$.parseJSON(data),
+            columns:[[
+                {field:'batch_no',title:"批次号"},
+                {field:'accountCode',title:"账户编号"},
+                {field:'combNo',title:"组合编号"},
+                {field:'symbol',title:"证券代码"},
+                {field:'side',title:"委托方向"},
+                {field:'price',title:"指令价格(￥)", align:'right',formatter:formatPrice,sortable:"true"},
+                {field:'deal_price',title:"成交均价(￥)", align:'right',formatter:formatPrice},
+                {field:'lastprice',title:"最新价(￥)", align:'right',formatter:formatPrice,sortable:"true"},
+                {field:'profit',title:"交易盈亏(￥)", align:'right',formatter:formatPrice,sortable:"true"},
+                {field:'fee',title:"佣金(￥)", align:'right',formatter:formatPrice,sortable:"true"},
+                {field:'impact',title:"冲击(￥)", align:'right',formatter:formatPrice,sortable:"true"},
+                {field:'impact_p',title:"冲击(%)", align:'right',formatter:formatPercentage,sortable:"true"},
+                {field:'shares',title:"目标数量", align:'right',formatter:formatAmount},
+                {field:'deal_amount',title:"完成数量", align:'right',formatter:formatAmount},
+                {field:'deal_amt',title:"完成金额", align:'right',formatter:formatPrice},
+                {field:'progress',title:"完成进度", align:'right',width:"10%",formatter:formatProgress,sortable:"true"},
+                {field:'deal_time',title:"成交时间", align:'right',formatter:formatTime,sortable:"true"}
+            ]]
+        }); 
+        $.messager.progress('close');
+    });
+    $("#detail").dialog({
+        title:batch_no,
+        buttons:[],
+        onClose:onClose
+    });
+
+    $("#detail").dialog("open");
+
+}
+
+function getReport(date)
+{
+    $.messager.progress({
+        title:'正在全速统计收益',
+        msg:''
+    });
+    $.get("job",{cmd:"t",p:date}, function(res,status){    
+        $.messager.progress('close');    
+        $('#report').treegrid({
+            onDblClickRow: openProduct,            
+            data:$.parseJSON(res),
+            frozenColumns:[[{field:'name',title:"产品名称",width:"15%",sortable:"true"},
+                {field:'totalAsset',title:"总资产",width:"7%",sortable:"true",formatter:formatPrice,align:"right"}]],
+            columns:[[                
+                {field:'totalShares',title:"份额",width:"7%",sortable:"true",formatter:formatPrice,align:"right"},
+                {field:'nav',title:"单位净值",width:100,sortable:"true",formatter:formatNav,align:"right"},
+                {field:'dividend',title:"累计分红",width:100,sortable:"true",formatter:formatNav,align:"right"},
+                {field:'stock',title:"股票仓位",width:100,sortable:"true",formatter:formatPercentage,align:"right"},
+                {field:'bond',title:"债券仓位",width:100,sortable:"true",formatter:formatPercentage,align:"right"},
+                {field:'dailyRet',title:"日收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'weeklyRet',title:"周收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'monthlyRet',title:"近1月收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'annualRet',title:"今年收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'benchmark',title:"基准收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'diff',title:"超额收益",width:100,sortable:"true",formatter:formatProfit,align:"right"},
+                {field:'date',title:"估值表日期",width:100,sortable:"true",align:"right"}
+            ]]
+
+        });                    
+
+    });
+}
+
+function endEditing(){
+    var rows=$("#details").datagrid('getRows');
+    var rows_=[];
+    for(var i=0;i<rows.length;i++)
+    {
+        if($("#details").datagrid('validateRow', i))
+        {
+            $("#details").datagrid('endEdit',i);
+            var weight=parseFloat(rows[i].weight);
+            var num=parseInt(rows[i].num)            
+            rows[i].num    = num>5?5:(num<1?1:num);
+            rows[i].weight = weight<0?0:weight;
+            rows_.push(rows[i]);
+        }
+        else
+        {
+            $("#details").datagrid('deleteRow',i);    
+        }
+        
+    }
+    $("#details").datagrid('loadData',rows_);    
+
+}
+function edit(){
+    endEditing();
+
+    var selectedId=$("#details").datagrid('getSelected').id;
+    var rows=$("#details").datagrid('getRows');
+    
+    for(var i=0;i<rows.length;i++)
+        if(rows[i].id==selectedId)
+            $("#details").datagrid('selectRow', i).datagrid('beginEdit', i);
+}
+
+function append(){
+    endEditing();
+    $("#details").datagrid('appendRow',{});
+    var i = $("#details").datagrid('getRows').length-1;
+    $("#details").datagrid('selectRow', i).datagrid('beginEdit', i);
+    
+}
+
+function removeit(){
+    var selectedId=$("#details").datagrid('getSelected').id;
+    var rows=$("#details").datagrid('getRows');    
+    for(var i=0;i<rows.length;i++)
+        if(rows[i].id==selectedId)
+            $("#details").datagrid('cancelEdit', i).datagrid('deleteRow', i);
+    
+}
+
+
+function openAlloc(p)
+{
+    $.get("job",{cmd:"b",p:p},function(data,status){
+
+        var details=$.parseJSON(data);
+
+        $("#detail").dialog({
+            title:"模型配比 ("+p+")",
+            buttons: [{
+                text:'添加',
+                iconCls:'icon-add',
+                handler:append
+            },{
+                text:'删除',
+                iconCls:'icon-remove',
+                handler:removeit
+            },{
+                text:'修改',
+                iconCls:'icon-edit',
+                handler:edit
+            },{
+                text:'保存',
+                iconCls:'icon-save',
+                handler:endEditing              
+            },{
+                text:'确认',
+                iconCls:'icon-ok',
+                handler:function(){   
+                    endEditing();                     
+                    $.get("job",
+                        {
+                            cmd:"f",
+                            p:JSON.stringify( {name:p,model:$("#details").datagrid("getRows")} )
+                        },
+                        function(data,status){
+                        $.messager.alert("",data.replace(/\n/g,"</br>"));
+                        refreshProduct();                        
+                    });                 
+                    $('#detail').dialog('close'); 
+                }
+            },{
+                text:'取消',
+                iconCls:'icon-cancel',
+                handler:function(){
+                   $('#detail').dialog('close');
+                }
+            }],
+            onClose:onClose
+        });    
+        $("#detail").dialog('open');
+        //console.log(details);
+        $("#details").datagrid({
+            fit:true,
+            rownumbers:true,
+            idField: 'id',           
+            remoteSort:false,       
+            sortName:"id",   
+            singleSelect:1,         
+            data:details,
+            columns:[[
+             {field:'id',title:'模型',width:"30%",sortable:"true",editor:{type:'textbox',options:{required:true}}},
+             {field:'weight',title:'持仓权重',width:"30%",sortable:"true",formatter:formatPercentage,align:'right',editor:{type:'numberbox',options:{precision:2,required:true}}},
+             {field:'num',title:'篮子数',width:"30%",sortable:"true",align:'right',editor:{type:'numberbox',options:{precision:0,required:true}}}
+             ]]             
+        }); 
+        
+    });
+}
+
+function getAlloc(date)
+{
+    $.messager.progress({
+        title:'正在全速统计策略配比',
+        msg:''
+    });
+    $.get("job",{cmd:"a",p:date}, function(res,status){        
+        $.messager.progress('close');
+        var data=$.parseJSON(res);     
+        var columns=[];
+        for(var d of data.model)
+            columns.push({field:d,title:d,formatter:formatPercentage,align:"right",editor:"numberbox"});    
+        
+        $('#report').treegrid({
+            onDblClickRow: openCharts,            
+            frozenColumns:[[{field:'name',title:"产品名称",width:"15%",sortable:"true"},               
+                {field:'totalAsset',title:"总资产",width:"7%",sortable:"true",formatter:formatPrice,align:"right"}]],
+            data:data.product,
+            columns:[columns]
+
+        });                    
+
+    });
+}
+
+function getStatus(row)
+{
+    if(row["_parentId"]==null)
+    {
+        $.get("job",{cmd:"getStatus",id:row['id']},function(data,status){
+            var res=$.parseJSON(data);
+            getControl(res.status,res.isTrader);
+        });
+    }
+
+}
+
+
+function onExpand(field){    
+    expandProduct[field["id"]]=true;
+}
+
+function onCollapse(field){
+    expandProduct[field["id"]]=false;
+}
+
+
+function onContextMenu(e,row)
+{
+    var p="";
+    if(row["_parentId"]==null)
+        p=row["id"];
+    else
+        p=row["_parentId"];
+
+    e.preventDefault();
+    $("#mm").menu('show', {
+        onClick:function(item){
+            if(item.text=="交易计划")
+                saveSchedule(p);
+            else if(item.text=="模型配比")
+                openAlloc(p);
+            else
+                checkPosition(0, row);
+
+
+        },
+        left: e.pageX,
+        top: e.pageY
+    });
+}
+
+
+$('#enddate').datebox({
+    onSelect: function(date){        
+        $("#enddate").datebox("setValue",datestr(date));
+    }
+});
+$('#startdate').datebox({
+    onSelect: function(date){        
+        $("#startdate").datebox("setValue",datestr(date));
+    }
+});
+$('#reportdate').datebox({
+    onSelect: function(date){        
+        $("#reportdate").datebox("setValue",datestr(date));
+        var date=$("#reportdate").datebox("getValue");
+        if($("#switch").switchbutton("options").checked)
+        {
+            getReport(date);
+        }
+        else
+        {
+            getAlloc(date);   
+        }
+        
+    }
+});
+
+var restart=function(date){
+    if(date!="")
+    {
+        $("#today").datebox("setValue",datestr(date));
+        date=$("#today").datebox("getValue");
+    }
+    $.post("job",{today:date},function(data,status){
+        refreshProduct();
+    });   
+    
+};
+
+$('#today').datebox({
+    onSelect: function(date){
+        restart(date);
+    }
+});
+
+function attribution(pos)
+{
+    $.messager.progress({
+        title:'正在全速'+(pos?"穿透持仓":"业绩归因"),
+        msg:''
+    });
+
+    var p=$("#product_attr").combobox("getValue");
+
+    $.get("job",
+        {
+            cmd:"getAttr",
+            p:p,
+            startdate:$("#startdate").datebox("getValue"),
+            enddate:  $("#enddate").datebox("getValue"),
+            pos:pos,
+            sector:   $("#stock_attr").combobox("getValue"),
+            group:     $("#aggr_attr").textbox("getText"),
+            productMap:$("#productMap").textbox("getText")
+        },
+        function(data,status)
+        {   
+            $.messager.progress('close');
+            var details=$.parseJSON(data);
+            var columns=[];
+            for(var d in details[0])
+            {
+                if(["a","sum","id"].indexOf(d)==-1)
+                    columns.push({field:d,title:d,formatter:formatPrice,align:"right"});
+            }
+            columns.push({field:"sum",title:"累计",formatter:formatPrice,align:"right"});
+            $('#detail_attr').treegrid({
+                fit:true,
+                rownumbers:false, 
+                idField: 'a',
+                remoteSort:false,          
+                singleSelect:0,
+                data:details,
+                frozenColumns:[[{field:"a",title:(pos?"穿透持仓":"业绩归因")}]],
+                columns:[columns]
+            }); 
+        }
+    );
+
+}
+
+function openProduct(field)
+{
+        
+    $.get("job",{cmd:"n",p:field["id"]}, function (data) {
+        $("#charts").dialog({title:field["name"]});
+        $("#charts").dialog('open');
+        $('#charts').html("");       
+        var dataset=$.parseJSON(data);
+        
+        $('<div class="chart" style="height:100%">').appendTo('#charts')
+            .highcharts({
+                chart: {
+                    zoomType: 'x',
+                },
+                title: {
+                    text: field["name"],                    
+                },
+                credits: {
+                    enabled: false
+                },
+                legend: {
+                    enabled: true
+                },
+                xAxis: {
+                     title: { text: '交易日' },
+                     labels:{ formatter:function(){return dataset.date[this.value];}}
+
+                },
+                yAxis: [{
+                    title: {
+                        text: "累计净值"
+                    }
+                },{
+                    title: {
+                        text: null
+                    },
+                    opposite: true,
+                    min:0
+                }],
+                plotOptions: {
+                    area: {
+                        fillColor: {
+                            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1},
+                            stops: [
+                                [0, "#2b908f"],
+                                [1, Highcharts.Color("#2b908f").setOpacity(0).get('rgba')]
+                            ]
+                        },     
+                        threshold: null,
+                        marker:{enabled: false}    
+                    },
+                    line: {
+                        marker: {
+                            enabled: false
+                        },
+                        lineWidth: 2
+                        
+                    }
+                },
+                tooltip:{                    
+                    formatter: function () {                             
+                        var s = dataset.date[this.x];
+                                                    
+                        $.each(this.points, function () {
+                            s+= "<br/><span style=\"color:"+this.series.color+"\">\u25CF</span> "+this.series.name+": <b>"+((this.series.name=="单位净值" || this.series.name=="基准收益")?(this.y).toFixed(4):((this.y/10000).toFixed(2)+"万元"))+"</b>";
+                            
+
+                        });
+                        return s;
+                    },
+                    shared: true,
+                    crosshairs: true
+                },
+                series: [
+                    {type:"area",name:"单位净值",data:dataset.nav},
+                    {type:"line",name:"基准收益",data:dataset.benchmark},
+                    {type:"line",yAxis:1,name:"累计分红",  data:dataset.dividend},
+                    {type:"line",yAxis:1,name:"份额",   data:dataset.share}
+                    
+                ]
+            });
+        
+    });
+}
+
+
+function checkModel(index, field){
+    $.messager.progress({
+        title:'正在获取数据',
+        msg:''
+    });
+    $.get("job",{cmd:"d",p:"model_"+field["id"]},function(data,status){
+        $.messager.progress('close');
+        var details=$.parseJSON(data);
+        $("#detail").dialog({
+            title:field["id"]+" ("+details.length+")",
+            buttons:[],
+            onClose:onClose
+        });    
+        $("#detail").dialog('open');
+        $("#details").datagrid({
+            fit:true,
+            rownumbers:true,
+            idField: 'id',           
+            remoteSort:false,   
+            sortName:"c",       
+            singleSelect:0,         
+            data:details,
+            columns:[[
+             {field:'ticker',title:'证券代码',width:"15%",sortable:"true"},
+             {field:'name',title:'证券名称',width:"15%",sortable:"true"},
+             {field:'price',title:'价格',width:"15%",sortable:"true",formatter:formatPrice, align:'right'},
+             {field:'w',title:'权重',width:"15%",sortable:"true",formatter:formatPercentage, align:'right'},
+             {field:'ret',title:'日收益率',width:"15%",sortable:"true",formatter:formatProfit, align:'right'},
+             {field:'c',title:'组合贡献',width:"15%",sortable:"true",formatter:formatProfit, align:'right'},
+             {field:'status',title:'状态',width:"10%",sortable:"true",formatter:formatStatus, align:'right'}
+             ]]
+        }); 
+
+    }); 
+}
+
+var security=function(t,p){
+    $.get("job",{cmd:"d",p:t+"_"+p},function(res,status){
+        var data=$.parseJSON(res);
+        $("#detail").dialog({
+            title:data.title+" ("+data.data.length+")",
+            buttons:[],
+            onClose:onClose
+        });
+        $("#detail").dialog('open');
+        $("#details").datagrid({
+            fit:true,
+            rownumbers:true,
+            idField: 'id',
+            remoteSort:false,          
+            sortName:"id",
+            singleSelect:0,
+            data:data.data,
+            columns:[[
+                {field:'id',title:"证券代码",width:"20%",sortable:"true"},
+                {field:'name',title:"证券名称",width:"20%",sortable:"true"},
+                {field:'price',title:"价格",formatter:formatPrice,align:"right",width:"20%",sortable:"true"},
+                {field:'ret',title:"当日收益",formatter:formatProfit,align:"right",width:"20%",sortable:"true"},
+                {field:'status',title:"状态",formatter:formatStatus,align:"right",width:"20%",sortable:"true"}
+            ]]
+        });
+    });
+}
+var chart0=Highcharts.chart('chart0',{
+        chart: {            
+            type: 'line',
+            height:  (12 / 16 * 100) + '%'
+        },
+        title: {text: ''},
+        yAxis: {
+            title: {
+                text: "年化基差(%)"
+            },
+            min: -15,
+            max: 15,
+        },
+        tooltip:{
+            formatter: function () {
+                var s="<b>年化基差</b><br>";
+                $.each(this.points, function () {
+                    s+= "<b>"+this.series.name+this.x+" </b>"+formatProfit(this.y)+"<br>";
+                });
+                return s;
+            },
+            positioner:function(){
+                return {x:this.chart.chartWidth-this.label.width,y:-1};
+            },
+            shared: true,
+            crosshairs: true,
+            borderWidth:0
+        },
+        credits: {
+            enabled: false
+        },
+
+        series: [{name: 'IC',data:[0,0,0,0]},
+                 {name: 'IH',data:[0,0,0,0]},
+                 {name: 'IF',data:[0,0,0,0]}]
+
+    });
+var chart1=Highcharts.chart('chart1',{
+        chart: {
+            polar: true,
+            type: 'area',
+            height:  (12 / 16 * 100) + '%',
+            events: {
+                    'click':function(e){
+                        var p=Math.round(e.xAxis[0].value).toString();
+                        security("future",p);
+                    }
+            }
+        },
+        title: { text: ''},
+        xAxis: {            
+            tickmarkPlacement: 'on',
+            lineWidth: 0
+        },
+
+        yAxis: {
+            gridLineInterpolation: 'polygon',
+            lineWidth: 0,
+            min: -5,
+            max: 5,
+        },
+        plotOptions: {
+            area: {
+                marker:{enabled: false}              
+            }        
+        },
+        credits: {
+            enabled: false
+        },
+        legend: {
+            enabled: false
+        },
+        tooltip:{
+            formatter: function () {
+                return "<b>"+this.x + " </b>" +  formatProfit(this.y);
+            },
+            positioner:function(){
+                return {x:this.chart.chartWidth-this.label.width,y:-1};
+            },
+            borderWidth:0,
+            background:'none'
+        },
+        series: [{
+            name: '平均涨幅(%)',            
+            pointPlacement: 'on'
+        }]
+
+    });
+var chart2=Highcharts.chart('chart2',{
+        chart: {
+            polar: true,
+            type: 'area',
+            height:  (12 / 16 * 100) + '%',
+            events: {
+                    'click':function(e){
+                        var p=Math.round(e.xAxis[0].value).toString();
+                        security("sector",p);
+                    }
+            }
+        },
+
+        title: {text: ''},
+        xAxis: {
+            
+            tickmarkPlacement: 'on',
+            lineWidth: 0
+        },
+
+        yAxis: {
+            gridLineInterpolation: 'polygon',
+            lineWidth: 0,
+            min: -5,
+            max: 5,
+        },
+        plotOptions: {
+            area: {
+                marker:{enabled: false}              
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        legend: {
+            enabled: false
+        },
+        tooltip:{
+            formatter: function () {
+                return "<b>"+this.x + " </b>" +  formatProfit(this.y);
+            },            
+            positioner:function(){
+                return {x:this.chart.chartWidth-this.label.width,y:-1};
+            },
+            borderWidth:0,
+            background:'none'
+        },
+        series: [{
+            name: '平均涨幅(%)',            
+            pointPlacement: 'on'
+        }]
+
+    });
+
+
+var updateMD=function(res)
+{
+    chart0.update({
+                "xAxis": {"categories": res.basismonth},
+                "series":[{"data":res.basis.IC,"name":"IC"},
+                        {"data":res.basis.IF,"name":"IF"},
+                        {"data":res.basis.IH,"name":"IH"}]
+                    });
+    chart1.update({"xAxis": {"categories": res.future},"series":[{"data":res.futures}]});
+    chart2.update({"xAxis": {"categories": res.sector},"series":[{"data":res.sectors}]});
+};
+
+var refreshProduct=function()
+{
+    //expandProduct={};
+    $.get("data",{p:10},function(res,status){
+        monitor=$.parseJSON(res);
+        updateMD(monitor.market);
+        var footer={"iconCls":"icon-sum","N":"","T":0,"num":0,"sellamt":0,"buyamt":0,"cash":0}        
+        var s="";
+        Product=monitor.product;        
+        for(var i of Product){
+            s+=i["id"]+i["type"];
+            for(var j of i['children'])
+                s+=j["id"];
+            var N=0;
+            while(i["id"]!=Product[N]["id"])N++;
+            Product[N]["state"]=expandProduct[i["id"]]?"open":"closed";
+            if(i.hasOwnProperty("T"))
+                footer["T"]+=i["T"];
+            if(i.hasOwnProperty("num"))
+            {
+                footer["buyamt"]+=i["buyamt"];
+                footer["sellamt"]+=i["sellamt"];
+                footer["num"]+=i["num"];
+            }
+            
+            
+        }
+        footer["cash"]=footer["sellamt"]-footer["buyamt"];
+        footer["N"]="账户合计: "+monitor.product.length;
+        
+        var md5_=MD5(s);
+        md5_product=md5_product==""?md5_:md5_product;                
+        for(var i of monitor.model)
+            i["state"]=expandProduct[i["id"]]?"open":"closed";
+        
+        $('#model').treegrid('loadData',monitor.model);
+        $('#monitor').treegrid('loadData',Product);        
+        $('#monitor').treegrid('reloadFooter',[footer]);
+
+    
+    });
+}
+
+var md=function(header)
+{
+setTimeout(function(){$('#zz500').html( formatProfit(header['000905.SH']));});
+setTimeout(function(){$('#hs300').html( formatProfit(header['000300.SH']));});
+setTimeout(function(){$('#sz50').html(  formatProfit(header['000016.SH'])); });
+setTimeout(function(){$('#CTP').html( header['CTP']);});
+setTimeout(function(){$('#SSE').html( header['SSE']);});
+setTimeout(function(){$('#SZSE').html( header['SZSE']);});
+setTimeout(function(){$('#date').html(  header['date']); });
+};
+
+$('#switch').switchbutton({
+    checked: true,
+    width:"5%",
+    offText:'收益统计',
+    onText:'策略配比',
+    onChange: function(checked){
+        var date=$("#reportdate").datebox("getValue");
+        if(checked)
+        {
+            getReport(date);
+        }
+        else
+        {
+            getAlloc(date);
+        }
+    }
+});
+
+
+$(function(){
+    $('#charts').dialog('close');//chart
+    $('#dlg').dialog('close');//content
+    $("#detail").dialog("close");//datagrid
+    
+    $("#today").datebox("setValue",datestr(new Date()));
+    $("#reportdate").datebox("setValue",datestr(new Date()));
+    $("#startdate").datebox("setValue",datestr(new Date()));
+    $("#enddate").datebox("setValue",datestr(new Date()));
+    $('#begin').linkbutton('disable');
+    $('#pause').linkbutton('disable');
+    $('#cancel').linkbutton('disable');
+    
+    $("#start").datebox("setValue","12/29/2017");
+    $("#end").datebox("setValue",datestr(new Date()));
+    $("#index").combobox("setValue","0");
+    $("#trade").combobox("setValue","a");
+    $("#fee").numberspinner("setValue",20);
+    $("#freq").numberspinner("setValue",5);    
+    $("#stock_attr").combobox("setValue",0);
+    $("#aggr_attr").textbox("setValue","{\n\"004712\":\"中金丰鸿\",\n\"004714\":\"中金丰颐\",\n\"005406\":\"中金金序量化蓝筹\",\n\"005405\":\"中金金序量化蓝筹\"\n}");
+    $("#productMap").textbox("setValue","{\n\"990069\":\"ZYCLJX27\",\n\"SN4778\":\"ZGQJ2\",\n\"990068\":\"ZYDYZ36\",\n\"SG3685\":\"YHZJLH1\",\n\"SG8431\":\"YHJHLH2\",\n\"920091\":\"ZZ500\",\n\"ZJ0202\":\"YHJHLH2\"\n}");
+
+    $('#detail_attr').treegrid({
+        fit:true,
+        rownumbers:false, 
+        idField: 'a',
+        remoteSort:false,          
+        singleSelect:0,
+        data:[{"a":"__份额__"},{"a":"净值"}],
+        frozenColumns:[[{field:"a",title:""}]],
+        columns:[[{field:"sum",title:"累计"}]]
+    }); 
+
+    $.get("data",{p:0},function(res,status){
+        var data=$.parseJSON(res);                
+        md(data.header);
+        version=data.version;
+        $('#version').html( "版本号："+ version);
+    });
+    setInterval(function(){
+        var p=0;
+        p=tab=="产品管理"?11:p;
+        p=tab=="交易管理"?21:p;
+
+        $.get("data",{p:p},function(res,status){
+            var data=$.parseJSON(res);    
+            md(data.header);
+
+            if(data.version!=version)location.reload();
+
+            if(data.product.length >0)
+            {
+                var needRefresh=false;
+                rows_product=[];
+                var s="";                
+                for(var i of data.product)
+                {                    
+                    s+=i["id"]+i["type"];
+                    for(var j of i['children'])
+                    {
+                        s+=j["id"];
+                    }
+                }
+                
+                var md5_=MD5(s);                
+                md5_product=md5_product==""?md5_:md5_product;
+                
+                if(md5_!=md5_product)
+                {                    
+                    md5_product=md5_;                
+                    refreshProduct();                    
+                }
+                else
+                {
+                    for(var i of data.product)
+                    {
+                        var N=0;
+                        while(i["id"]!=Product[N]["id"])N++;
+
+                        for(var j of i['children'])
+                        {
+                            if(expandProduct[i["id"]])
+                            {
+                                var M=0;
+                                while(j["id"]!=Product[N]["children"][M]["id"])M++;
+                                Product[N]["children"][M]["N"]=j["N"];
+                                Product[N]["children"][M]["A"]=j["A"];
+                                Product[N]["children"][M]["R"]=j["R"];
+                                Product[N]["children"][M]["T"]=j["T"];
+                                Product[N]["children"][M]["Nav"]=j["Nav"];
+                            }
+                        }
+                        Product[N]["N"]=i["N"];
+                        Product[N]["A"]=i["A"];
+                        Product[N]["R"]=i["R"];
+                        Product[N]["T"]=i["T"];
+                        Product[N]["Nav"]=i["Nav"];
+                        
+                    }                  
+                    for(var r of data.model)
+                        r["state"]=expandProduct[r["id"]]?"open":"closed";
+                    updateMD(data.market);        
+                    setTimeout(function(){$('#model').treegrid('loadData',data.model);});
+                    setTimeout(function(){$('#monitor').treegrid('loadData',Product);});
+                    
+                }
+            }
+            if(data.tasks.length>0)
+            {
+                for(var r of data.tasks)
+                {
+                    r["state"]=expandProduct[r["id"]]?"open":"closed";
+                    for(var j of r["children"])
+                        if(expandProduct[r["id"]])
+                            j["state"]=expandProduct[j["id"]]?"open":"closed";                    
+                }
+                $('#tg').treegrid('loadData',data.tasks);
+            }
+        });
+        
+    },3000);
+
+});
+
+</script>    
+</html>
